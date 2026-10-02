@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Inventory & Resource Booking"
+description = "A straightforward internal tool for teams to track shared inventory and equipment by location, check availability, and reserve quantities safely. Designed as a clear starter version of a multi-warehouse fulfillment system."
+version = "1.0.0"
+id = "artifacts/inventory-fulfillment"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18604
+
+[services.development]
+run = "pnpm --filter @workspace/inventory-fulfillment run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/inventory-fulfillment", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/inventory-fulfillment/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18604"
+BASE_PATH = "/"

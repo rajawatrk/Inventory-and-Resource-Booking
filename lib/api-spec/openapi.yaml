@@ -10,6 +10,10 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: inventory
+    description: Resources, locations, stock, and movements
+  - name: reservations
+    description: Time-based resource reservations
 paths:
   /healthz:
     get:
@@ -24,6 +28,238 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [inventory]
+      summary: Get inventory dashboard summary
+      responses:
+        "200":
+          description: Summary of stock, locations, and reservations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+  /resources:
+    get:
+      operationId: listResources
+      tags: [inventory]
+      summary: List tracked resources
+      responses:
+        "200":
+          description: Resource catalog
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Resource"
+    post:
+      operationId: createResource
+      tags: [inventory]
+      summary: Add a resource to the catalog
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourceInput"
+      responses:
+        "201":
+          description: Created resource
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Resource"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /locations:
+    get:
+      operationId: listLocations
+      tags: [inventory]
+      summary: List storage locations
+      responses:
+        "200":
+          description: Locations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Location"
+    post:
+      operationId: createLocation
+      tags: [inventory]
+      summary: Add a storage location
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocationInput"
+      responses:
+        "201":
+          description: Created location
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /inventory:
+    get:
+      operationId: listInventory
+      tags: [inventory]
+      summary: List stock and available quantities by resource and location
+      parameters:
+        - name: locationId
+          in: query
+          schema:
+            type: integer
+        - name: startAt
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endAt
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Inventory levels for the selected time period
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventoryLevel"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /inventory/adjustments:
+    post:
+      operationId: adjustInventory
+      tags: [inventory]
+      summary: Add or remove stock
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InventoryAdjustmentInput"
+      responses:
+        "201":
+          description: Recorded stock movement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockMovement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /movements:
+    get:
+      operationId: listMovements
+      tags: [inventory]
+      summary: List recent stock movements
+      responses:
+        "200":
+          description: Recent stock movement history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StockMovement"
+  /reservations:
+    get:
+      operationId: listReservations
+      tags: [reservations]
+      summary: List resource reservations
+      responses:
+        "200":
+          description: Reservations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Reservation"
+    post:
+      operationId: createReservation
+      tags: [reservations]
+      summary: Reserve resource units for a time period
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReservationInput"
+      responses:
+        "201":
+          description: Confirmed reservation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reservation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /reservations/{id}/cancel:
+    post:
+      operationId: cancelReservation
+      tags: [reservations]
+      summary: Cancel a reservation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cancelled reservation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reservation"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /reservations/{id}/fulfill:
+    post:
+      operationId: fulfillReservation
+      tags: [reservations]
+      summary: Fulfill a reservation and deduct the stock
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Fulfilled reservation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reservation"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +269,150 @@ components:
           type: string
       required:
         - status
+    Dashboard:
+      type: object
+      properties:
+        resourceCount: { type: integer }
+        locationCount: { type: integer }
+        totalOnHand: { type: integer }
+        activeReservations: { type: integer }
+        lowStockCount: { type: integer }
+        lowStockItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/LowStockItem"
+      required: [resourceCount, locationCount, totalOnHand, activeReservations, lowStockCount, lowStockItems]
+    LowStockItem:
+      type: object
+      properties:
+        resourceId: { type: integer }
+        name: { type: string }
+        sku: { type: string }
+        locationName: { type: string }
+        onHand: { type: integer }
+        reorderPoint: { type: integer }
+      required: [resourceId, name, sku, locationName, onHand, reorderPoint]
+    Resource:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        sku: { type: string }
+        category: { type: string }
+        unit: { type: string }
+        reorderPoint: { type: integer }
+        createdAt: { type: string, format: date-time }
+      required: [id, name, sku, category, unit, reorderPoint, createdAt]
+    ResourceInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        sku: { type: string, minLength: 1, maxLength: 40 }
+        category: { type: string, minLength: 1, maxLength: 60 }
+        unit: { type: string, minLength: 1, maxLength: 24 }
+        reorderPoint: { type: integer, minimum: 0 }
+      required: [name, sku, category, unit, reorderPoint]
+    Location:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        address: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, name, address, createdAt]
+    LocationInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        address: { type: string, maxLength: 240 }
+      required: [name]
+    InventoryLevel:
+      type: object
+      properties:
+        resourceId: { type: integer }
+        resourceName: { type: string }
+        sku: { type: string }
+        category: { type: string }
+        unit: { type: string }
+        locationId: { type: integer }
+        locationName: { type: string }
+        onHand: { type: integer }
+        reserved: { type: integer }
+        available: { type: integer }
+        reorderPoint: { type: integer }
+      required: [resourceId, resourceName, sku, category, unit, locationId, locationName, onHand, reserved, available, reorderPoint]
+    InventoryAdjustmentInput:
+      type: object
+      properties:
+        resourceId: { type: integer }
+        locationId: { type: integer }
+        direction: { type: string, enum: [in, out] }
+        quantity: { type: integer, minimum: 1 }
+        reason: { type: string, minLength: 1, maxLength: 240 }
+      required: [resourceId, locationId, direction, quantity, reason]
+    StockMovement:
+      type: object
+      properties:
+        id: { type: integer }
+        resourceId: { type: integer }
+        resourceName: { type: string }
+        locationId: { type: integer }
+        locationName: { type: string }
+        movementType: { type: string, enum: [stock_in, stock_out, order_fulfilled] }
+        quantity: { type: integer }
+        reason: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, resourceId, resourceName, locationId, locationName, movementType, quantity, reason, createdAt]
+    Reservation:
+      type: object
+      properties:
+        id: { type: integer }
+        resourceId: { type: integer }
+        resourceName: { type: string }
+        sku: { type: string }
+        locationId: { type: integer }
+        locationName: { type: string }
+        quantity: { type: integer }
+        requester: { type: string }
+        startAt: { type: string, format: date-time }
+        endAt: { type: string, format: date-time }
+        status: { type: string, enum: [confirmed, cancelled, fulfilled] }
+        notes: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, resourceId, resourceName, sku, locationId, locationName, quantity, requester, startAt, endAt, status, notes, createdAt]
+    ReservationInput:
+      type: object
+      properties:
+        resourceId: { type: integer }
+        locationId: { type: integer }
+        quantity: { type: integer, minimum: 1 }
+        requester: { type: string, minLength: 1, maxLength: 100 }
+        startAt: { type: string, format: date-time }
+        endAt: { type: string, format: date-time }
+        notes: { type: string, maxLength: 240 }
+      required: [resourceId, locationId, quantity, requester, startAt, endAt]
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+      required: [error]
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Requested record was not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Conflict:
+      description: Request conflicts with existing inventory or reservation state
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
 

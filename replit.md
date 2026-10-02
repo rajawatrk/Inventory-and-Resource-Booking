@@ -1,6 +1,6 @@
-# [Project name]
+# Inventory & Resource Booking
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+An internal tool for tracking shared equipment and supplies by location, checking time-based availability, and managing reservations.
 
 ## Run & Operate
 
@@ -22,15 +22,21 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/inventory-fulfillment/` — web app
+- `artifacts/api-server/src/routes/inventory.ts` and `reservations.ts` — API behavior
+- `lib/api-spec/openapi.yaml` — API contract and generated hooks/schemas
+- `lib/db/src/schema/` — PostgreSQL schema
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- The first version is a single-team starter, not the full multi-tenant SaaS scope from the inventory brief.
+- Reservations hold stock only for overlapping time windows. The API locks the resource/location stock row inside a transaction before checking competing reservations, preventing concurrent requests from oversubscribing a slot.
+- Completing a reservation deducts on-hand stock and records a movement in the same transaction.
+- PostgreSQL is the source of truth; the UI uses generated API hooks from the OpenAPI contract.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+The inventory/fulfillment brief defines the product. The resource-booking brief supplies the initial inventory types and booking concepts: resources, locations, time-window availability, and reservations. The starter includes a resource catalog, locations, stock adjustments, reservation create/cancel/fulfill, and movement history. Multi-tenant login/RLS, warehouse transfers, scheduled reconciliation, recurring reservations, approval workflows, and realtime notifications are later additions.
 
 ## User preferences
 
